@@ -121,7 +121,7 @@ class _State:
         self,
         fault: Faults,
         clear_active: bool,
-        error: Optional[str] = None,
+        error: Optional[Exception] = None,
     ) -> None:
         """Fault the active transaction."""
         hook = self.__active.on_fault

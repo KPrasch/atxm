@@ -1,11 +1,10 @@
 import contextlib
-from typing import Callable, Optional, Union
+from typing import Callable
 
 from twisted.internet import reactor
 from web3 import Web3
-from web3.exceptions import TransactionNotFound
-from web3.types import PendingTx as PendingTxData, TxData, TxParams
-from web3.types import RPCError, TxReceipt, Wei
+from web3.types import RPCError, Wei
+from web3.types import TxData, TxParams
 
 from atxm.exceptions import (
     InsufficientFunds,
@@ -32,14 +31,6 @@ def _log_gas_weather(base_fee: Wei, tip: Wei) -> None:
     base_fee_gwei = Web3.from_wei(base_fee, "gwei")
     tip_gwei = Web3.from_wei(tip, "gwei")
     log.info(f"Gas conditions: base {base_fee_gwei} gwei | tip {tip_gwei} gwei")
-
-
-def _get_receipt(w3: Web3, data: Union[TxData, PendingTxData]) -> Optional[TxReceipt]:
-    try:
-        receipt = w3.eth.get_transaction_receipt(data["hash"])
-    except TransactionNotFound:
-        return
-    return receipt
 
 
 def fire_hook(hook: Callable, tx: AsyncTx, *args, **kwargs) -> None:
@@ -79,7 +70,7 @@ def _handle_rpc_error(e: Exception, tx: FutureTx) -> None:
             fire_hook(hook=hook, tx=tx, error=e)
 
 
-def _make_tx_params(data: TxData) -> TxParams:
+def _txdata_to_txparams(data: TxData) -> TxParams:
     """
     TxData -> TxParams: Creates a transaction parameters
     object from a transaction data object for broadcast.

@@ -31,12 +31,12 @@ from atxm.tx import (
 )
 from atxm.utils import (
     _get_average_blocktime,
-    _get_receipt,
     _handle_rpc_error,
     fire_hook,
-    _make_tx_params,
+    _txdata_to_txparams,
 )
 from .logging import log
+from .rpc import _get_receipt, simulate
 
 
 class _Machine:
@@ -230,9 +230,9 @@ class _Machine:
             receipt = self.__get_receipt()
 
         # Outcome 2: the pending transaction was reverted (final error)
-        except TransactionReverted:
+        except TransactionReverted as e:
             self._state.fault(
-                error=self._state.pending.txhash.hex(),
+                error=e,
                 fault=Faults.REVERT,
                 clear_active=True,
             )
@@ -345,7 +345,7 @@ class _Machine:
         If the broadcast is not successful, it is re-queued.
         """
         future_tx = self._state._pop()  # popleft
-        future_tx.params = _make_tx_params(future_tx.params)
+        future_tx.params = _txdata_to_txparams(future_tx.params)
         signer = self.__get_signer(future_tx._from)
         nonce = self.w3.eth.get_transaction_count(signer.address, "latest")
         if nonce > future_tx.params["nonce"]:
@@ -385,14 +385,15 @@ class _Machine:
         receipt = _get_receipt(w3=self.w3, data=txdata)
         status = receipt.get("status")
         if status == 0:
-            # If status in response equals 1 the transaction was successful.
-            # If it is equals 0 the transaction was reverted by EVM.
-            # https://web3py.readthedocs.io/en/stable/web3.eth.html#web3.eth.Eth.get_transaction_receipt
-            log.info(
-                f"Transaction {txdata['hash'].hex()} was reverted by EVM with status {status}"
+            reason = simulate(
+                w3=self.w3,
+                txdata=txdata,
             )
-            raise TransactionReverted(receipt)
-
+            raise TransactionReverted(
+                reason=reason,
+                tx=self._state.pending,
+                receipt=receipt,
+            )
         if receipt:
             log.info(
                 f"[accepted] Transaction {txdata['nonce']}|{txdata['hash'].hex()} "

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from web3.types import RPCError
+from web3.types import RPCError, TxReceipt
 
 
 class Faults(Enum):
@@ -54,3 +54,14 @@ class Fault(Exception):
 
 class TransactionReverted(Exception):
     """raised when a transaction has been reverted"""
+
+    def __init__(self, reason, tx, receipt: TxReceipt, error: RPCError = None):
+        self.tx = tx
+        self.receipt = receipt
+        self.error = error
+        self.reason = reason
+        super().__init__(
+            f"Transaction {tx.txhash.hex()} reverted. \n "
+            f"reason: {reason} \n"
+            f"error: {error} \n"
+        )

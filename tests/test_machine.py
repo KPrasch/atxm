@@ -1,5 +1,4 @@
 import pytest
-
 import pytest_twisted
 from twisted.internet import reactor
 from twisted.internet.task import deferLater
